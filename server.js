@@ -272,7 +272,7 @@ app.get('*', (req, res) => {
 
 // ─── Iniciar servidor ──────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Real People Web — Servidor corriendo en puerto ${PORT}`);
   console.log(`   Entorno: ${process.env.NODE_ENV || 'development'}`);
   console.log(`   KV Config Key: "${CONFIG_KEY}"`);
