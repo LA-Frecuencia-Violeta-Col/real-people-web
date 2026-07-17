@@ -55,6 +55,7 @@ if (missingVars.length > 0) {
 const s3Client = new S3Client({
   region: 'auto',                                   // R2 usa "auto"
   endpoint: process.env.R2_ENDPOINT,                // Tu endpoint de R2
+  forcePathStyle: true,                             // Evitar subdominios multinivel y error SSL
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
