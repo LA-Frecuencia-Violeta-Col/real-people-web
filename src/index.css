@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@100..900&family=Inter:wght@100..900&family=Space+Grotesk:wght@300..700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-display, "Space Grotesk", sans-serif);
+  --font-sans: var(--font-sans, "Inter", sans-serif);
+  --font-archivo: var(--font-archivo, "Archivo", sans-serif);
+  --color-gold: var(--accent-color, #D4AF37);
+  --color-sand: #C2B280;
+  --color-dark: #0D0D0D;
+}
+
+:root {
+  --accent-color: #D4AF37;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-dark text-white font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.2);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.4);
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Tay Beach Festival 2026",
+  "description": "Landing page de ultra-lujo para el evento de música electrónica en Tay Beach Hotel, Santa Marta.",
+  "requestFramePermissions": ["geolocation"]
+}
