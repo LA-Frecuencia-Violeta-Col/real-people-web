@@ -145,7 +145,9 @@ function authenticateToken(req, res, next) {
 
 // ─── Middleware global ─────────────────────────────────────────────────────
 
-app.use(express.json({ limit: '2mb' }));  // Limitar el tamaño de peticiones JSON
+app.use(express.json({ limit: '2mb' }));
+
+// Importamos el módulo stream para manejar el cuerpo binario (fotos/fuentes)
 
 // ─── Endpoints API ─────────────────────────────────────────────────────────
 
@@ -217,13 +219,66 @@ app.post('/api/config', authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /api/presign
- * Genera una URL firmada temporal para que el browser pueda subir
- * un archivo directamente a Cloudflare R2 sin pasar por este servidor.
+ * POST /api/upload
+ * Recibe un archivo binario desde el frontend y lo sube directamente a R2
+ * usando las credenciales del servidor (sin exponer nada al navegador).
  * Requiere autenticación de administrador.
  *
- * Body: { filename: string, contentType: string }
- * Response: { url: string } — URL firmada válida por 1 hora
+ * Query params: folder (logos|hero|backgrounds|artists|experiences|lodging|tickets|branding)
+ *               name   (nombre original del archivo para extraer extensión)
+ * Headers:      Content-Type: tipo MIME real del archivo
+ * Body:         Binario del archivo
+ * Response:     { url: string } — URL pública permanente del archivo
+ */
+app.post('/api/upload', authenticateToken,
+  express.raw({ type: '*/*', limit: '50mb' }),
+  async (req, res) => {
+    try {
+      const folder   = (req.query.folder || 'media');
+      const origName = (req.query.name   || 'file');
+      const contentType = req.get('x-file-content-type') || req.get('content-type') || 'application/octet-stream';
+
+      // Tipos de archivo permitidos
+      const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/webp',
+        'image/gif', 'image/svg+xml',
+        'video/mp4', 'video/webm',
+        'font/woff', 'font/woff2', 'font/ttf', 'font/otf',
+      ];
+
+      if (!allowedTypes.includes(contentType)) {
+        return res.status(400).json({ error: `Tipo de archivo no permitido: ${contentType}` });
+      }
+
+      const ext = String(origName).split('.').pop()?.toLowerCase() ?? 'jpg';
+      const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      const { PutObjectCommand: PutCmd } = await import('@aws-sdk/client-s3');
+      const command = new PutCmd({
+        Bucket:      process.env.R2_BUCKET || 'media',
+        Key:         key,
+        ContentType: contentType,
+        Body:        req.body,
+      });
+
+      await s3Client.send(command);
+
+      const publicBaseUrl = process.env.VITE_R2_PUBLIC_URL || '';
+      const publicUrl     = `${publicBaseUrl}/${key}`;
+
+      console.log(`[Upload] ✅ Subido a R2: ${publicUrl}`);
+      res.json({ url: publicUrl });
+    } catch (error) {
+      console.error('[Upload] ❌ Error subiendo archivo a R2:', error);
+      res.status(500).json({ error: 'Error interno al subir el archivo.' });
+    }
+  }
+);
+
+/**
+ * POST /api/presign  (DEPRECATED - mantenido por compatibilidad)
+ * Ahora el upload pasa por el servidor con /api/upload
+ * Este endpoint se mantiene para no romper versiones previas.
  */
 app.post('/api/presign', authenticateToken, async (req, res) => {
   try {

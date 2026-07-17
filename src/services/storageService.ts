@@ -39,8 +39,9 @@ export interface UploadResult {
 }
 
 /**
- * Sube un archivo a Cloudflare R2 mediante Presigned URL segura.
- * Genera un nombre único para evitar colisiones de nombres.
+ * Sube un archivo a Cloudflare R2 a través del servidor Express (proxy seguro).
+ * El archivo viaja: Browser → /api/upload (Express) → Cloudflare R2.
+ * De esta forma, el navegador nunca habla directamente con R2 (sin problemas CORS).
  */
 export async function uploadFile(
   file: File,
@@ -52,49 +53,34 @@ export async function uploadFile(
     throw new Error(validation.error);
   }
 
-  // 2. Generar nombre único conservando la extensión original
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const path = `${folder}/${uniqueName}`;
-
-  // 3. Pedir URL firmada temporal al servidor
-  //    El servidor tiene las credenciales de R2, nosotros solo pedimos permiso
+  // 2. Obtener token de administrador
   const token = getAdminToken();
-  const presignRes = await fetch('/api/presign', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ filename: path, contentType: file.type }),
-  });
 
-  if (!presignRes.ok) {
-    const err = await presignRes.json().catch(() => ({ error: 'Error desconocido' }));
-    throw new Error(err.error || 'Error al solicitar permiso de subida.');
-  }
-
-  const { url: presignedUrl } = await presignRes.json();
-
-  // 4. Subir el archivo DIRECTAMENTE a Cloudflare R2
-  //    No pasa por nuestro servidor → más rápido, sin límites de tamaño del servidor
-  const uploadRes = await fetch(presignedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type },
-    body: file,
-  });
+  // 3. Subir el archivo al servidor Express (que lo reenvía a R2)
+  //    Enviamos el archivo como binario puro en el body.
+  //    El Content-Type real del archivo va en el header x-file-content-type.
+  const uploadRes = await fetch(
+    `/api/upload?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(file.name)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': file.type,
+        'x-file-content-type': file.type,
+      },
+      body: file,
+    }
+  );
 
   if (!uploadRes.ok) {
-    throw new Error('Error al subir el archivo a Cloudflare R2.');
+    const err = await uploadRes.json().catch(() => ({ error: 'Error desconocido' }));
+    throw new Error(err.error || 'Error al subir el archivo.');
   }
 
-  // 5. Construir la URL pública permanente
-  //    VITE_R2_PUBLIC_URL = "https://pub-XXXX.r2.dev"
-  const publicBaseUrl = import.meta.env.VITE_R2_PUBLIC_URL || '';
-  const publicUrl = `${publicBaseUrl}/${path}`;
+  const { url } = await uploadRes.json();
 
-  console.log(`[R2 Storage] ✅ Subido: ${publicUrl}`);
-  return { url: publicUrl, path };
+  console.log(`[R2 Storage] ✅ Subido: ${url}`);
+  return { url, path: url };
 }
 
 /**
