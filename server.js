@@ -20,25 +20,12 @@ import { fileURLToPath } from 'url';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import jwt from 'jsonwebtoken';
-import { execSync } from 'child_process';
-import fs from 'fs';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Autocompilar frontend si la carpeta dist no existe
-const distPath = path.join(__dirname, 'dist');
-if (!fs.existsSync(distPath) || !fs.existsSync(path.join(distPath, 'index.html'))) {
-  console.log('⚠️  Carpeta "dist" no encontrada. Iniciando compilación de Vite...');
-  try {
-    execSync('npm run build', { stdio: 'inherit' });
-    console.log('✅ Compilación de Vite completada con éxito.');
-  } catch (error) {
-    console.error('❌ Error compilando Vite desde el servidor:', error);
-  }
-}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
