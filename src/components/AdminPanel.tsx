@@ -319,7 +319,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-28 md:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pb-28 md:pb-8">
           <div className="max-w-3xl mx-auto space-y-5">
 
             {/* ╔══ ESTRUCTURA ══════════════════════════════════════════════╗ */}
@@ -547,7 +547,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                       <RPInput label="Nombre" value={suite.name} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], name: v }; handleChange('lodging', 'suites', s); }} />
                       <RPInput label="Destacado" value={suite.highlight} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], highlight: v }; handleChange('lodging', 'suites', s); }} placeholder="Ej: Deck frente al mar" />
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <RPInput label="Capacidad" value={suite.capacity} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], capacity: v }; handleChange('lodging', 'suites', s); }} placeholder="2-3 adultos" />
                       <RPInput label="Espacio" value={suite.space} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], space: v }; handleChange('lodging', 'suites', s); }} placeholder="30 m²" />
                       <RPInput label="Camas" value={suite.beds} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], beds: v }; handleChange('lodging', 'suites', s); }} placeholder="1 King" />
@@ -755,7 +755,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <p className="text-xs font-bold tracking-widest uppercase text-white/40">Logo Navegación (Header)</p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <RPInput label="Tamaño Desk (px)" value={formData.settings.logoSize} onChange={v => handleChange('settings', 'logoSize', parseInt(v) || 60)} type="number" />
                         <RPInput label="Tamaño Móvil (px)" value={formData.settings.mobileLogoSize} onChange={v => handleChange('settings', 'mobileLogoSize', parseInt(v) || 48)} type="number" />
                       </div>
@@ -767,7 +767,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                     </div>
                     <div className="space-y-3">
                       <p className="text-xs font-bold tracking-widest uppercase text-white/40">Logo del Footer</p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <RPInput label="Tamaño Desk (px)" value={formData.settings.footerLogoSize} onChange={v => handleChange('settings', 'footerLogoSize', parseInt(v) || 80)} type="number" />
                         <RPInput label="Tamaño Móvil (px)" value={formData.settings.footerMobileLogoSize} onChange={v => handleChange('settings', 'footerMobileLogoSize', parseInt(v) || 60)} type="number" />
                       </div>
