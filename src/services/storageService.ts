@@ -73,8 +73,17 @@ export async function uploadFile(
   );
 
   if (!uploadRes.ok) {
-    const err = await uploadRes.json().catch(() => ({ error: 'Error desconocido' }));
-    throw new Error(err.error || 'Error al subir el archivo.');
+    // Capturar el texto real de la respuesta para debug
+    const rawText = await uploadRes.text().catch(() => '');
+    let errMsg = `Error ${uploadRes.status} al subir el archivo.`;
+    try {
+      const parsed = JSON.parse(rawText);
+      errMsg = parsed.error || errMsg;
+    } catch {
+      // El servidor devolvió algo que no es JSON (ej: HTML de Nginx)
+      errMsg = `Error ${uploadRes.status}: ${rawText.slice(0, 200) || 'Respuesta vacía del servidor'}`;
+    }
+    throw new Error(errMsg);
   }
 
   const { url } = await uploadRes.json();

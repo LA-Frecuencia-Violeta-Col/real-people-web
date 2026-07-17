@@ -230,50 +230,65 @@ app.post('/api/config', authenticateToken, async (req, res) => {
  * Body:         Binario del archivo
  * Response:     { url: string } — URL pública permanente del archivo
  */
-app.post('/api/upload', authenticateToken,
-  express.raw({ type: '*/*', limit: '50mb' }),
-  async (req, res) => {
-    try {
-      const folder   = (req.query.folder || 'media');
-      const origName = (req.query.name   || 'file');
-      const contentType = req.get('x-file-content-type') || req.get('content-type') || 'application/octet-stream';
+app.post('/api/upload', authenticateToken, async (req, res) => {
+  try {
+    const folder    = String(req.query.folder   || 'media');
+    const origName  = String(req.query.name     || 'file');
+    const contentType = req.get('x-file-content-type') || 'application/octet-stream';
 
-      // Tipos de archivo permitidos
-      const allowedTypes = [
-        'image/jpeg', 'image/png', 'image/webp',
-        'image/gif', 'image/svg+xml',
-        'video/mp4', 'video/webm',
-        'font/woff', 'font/woff2', 'font/ttf', 'font/otf',
-      ];
+    console.log(`[Upload] 📥 Iniciando subida — folder: ${folder}, name: ${origName}, type: ${contentType}`);
 
-      if (!allowedTypes.includes(contentType)) {
-        return res.status(400).json({ error: `Tipo de archivo no permitido: ${contentType}` });
-      }
+    // Tipos de archivo permitidos
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/webp',
+      'image/gif', 'image/svg+xml',
+      'video/mp4', 'video/webm',
+      'font/woff', 'font/woff2', 'font/ttf', 'font/otf',
+    ];
 
-      const ext = String(origName).split('.').pop()?.toLowerCase() ?? 'jpg';
-      const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-      const { PutObjectCommand: PutCmd } = await import('@aws-sdk/client-s3');
-      const command = new PutCmd({
-        Bucket:      process.env.R2_BUCKET || 'media',
-        Key:         key,
-        ContentType: contentType,
-        Body:        req.body,
-      });
-
-      await s3Client.send(command);
-
-      const publicBaseUrl = process.env.VITE_R2_PUBLIC_URL || '';
-      const publicUrl     = `${publicBaseUrl}/${key}`;
-
-      console.log(`[Upload] ✅ Subido a R2: ${publicUrl}`);
-      res.json({ url: publicUrl });
-    } catch (error) {
-      console.error('[Upload] ❌ Error subiendo archivo a R2:', error);
-      res.status(500).json({ error: 'Error interno al subir el archivo.' });
+    if (!allowedTypes.includes(contentType)) {
+      return res.status(400).json({ error: `Tipo de archivo no permitido: ${contentType}` });
     }
+
+    // Leer el cuerpo binario del request manualmente desde el stream
+    // Este método es 100% confiable independientemente del orden de middlewares
+    const chunks = [];
+    await new Promise((resolve, reject) => {
+      req.on('data',  chunk => chunks.push(chunk));
+      req.on('end',   resolve);
+      req.on('error', reject);
+    });
+    const fileBuffer = Buffer.concat(chunks);
+
+    console.log(`[Upload] 📦 Tamaño recibido: ${(fileBuffer.length / 1024).toFixed(1)} KB`);
+
+    if (fileBuffer.length === 0) {
+      return res.status(400).json({ error: 'El archivo recibido está vacío.' });
+    }
+
+    const ext = origName.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+    const command = new PutObjectCommand({
+      Bucket:        process.env.R2_BUCKET || 'media',
+      Key:           key,
+      ContentType:   contentType,
+      Body:          fileBuffer,
+      ContentLength: fileBuffer.length,
+    });
+
+    await s3Client.send(command);
+
+    const publicBaseUrl = process.env.VITE_R2_PUBLIC_URL || '';
+    const publicUrl     = `${publicBaseUrl}/${key}`;
+
+    console.log(`[Upload] ✅ Subido a R2: ${publicUrl}`);
+    res.json({ url: publicUrl });
+  } catch (error) {
+    console.error('[Upload] ❌ Error subiendo archivo a R2:', error?.message || error);
+    res.status(500).json({ error: String(error?.message || 'Error interno al subir el archivo.') });
   }
-);
+});
 
 /**
  * POST /api/presign  (DEPRECATED - mantenido por compatibilidad)
