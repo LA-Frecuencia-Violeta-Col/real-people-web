@@ -11,6 +11,7 @@ import { PageData, SuiteItem } from '../../types';
 export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
     const [selectedSuite, setSelectedSuite] = useState<SuiteItem | null>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+    const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
     // Close modal on Esc key
     useEffect(() => {
@@ -41,18 +42,36 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
         }
     };
 
-    const nextPhoto = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (selectedSuite?.gallery) {
+    const nextPhoto = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        if (selectedSuite?.gallery && selectedSuite.gallery.length > 0) {
             setCurrentPhotoIndex((prev) => (prev + 1) % selectedSuite.gallery!.length);
         }
     };
 
-    const prevPhoto = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (selectedSuite?.gallery) {
+    const prevPhoto = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        if (selectedSuite?.gallery && selectedSuite.gallery.length > 0) {
             setCurrentPhotoIndex((prev) => (prev - 1 + selectedSuite.gallery!.length) % selectedSuite.gallery!.length);
         }
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchStartX(e.touches[0].clientX);
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStartX === null) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 40) {
+            if (diff > 0) {
+                nextPhoto();
+            } else {
+                prevPhoto();
+            }
+        }
+        setTouchStartX(null);
     };
 
     return (
@@ -68,8 +87,8 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
 
                 <div
                     id="lodging-slider"
-                    className="flex space-x-6 md:space-x-8 overflow-x-auto pb-10 md:pb-12 scrollbar-hide snap-x snap-mandatory"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    className="flex space-x-6 md:space-x-8 overflow-x-auto pb-10 md:pb-12 scrollbar-hide snap-x snap-mandatory touch-pan-x"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
                 >
                     {(data.suites || []).filter(suite => !suite.hidden).map((suite, idx) => (
                         <motion.div
@@ -143,13 +162,13 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
                 <div className="flex justify-center space-x-4 mt-12 md:mt-16">
                     <button
                         onClick={() => scroll('left')}
-                        className="p-4 md:p-5 border border-white/10 rounded-full hover:bg-white hover:text-dark transition-all duration-500 bg-white/5 backdrop-blur-sm shadow-xl"
+                        className="p-4 md:p-5 border border-white/10 rounded-full hover:bg-white hover:text-dark transition-all duration-500 bg-white/5 backdrop-blur-sm shadow-xl touch-manipulation"
                     >
                         <ChevronLeft size={24} />
                     </button>
                     <button
                         onClick={() => scroll('right')}
-                        className="p-4 md:p-5 border border-white/10 rounded-full hover:bg-white hover:text-dark transition-all duration-500 bg-white/5 backdrop-blur-sm shadow-xl"
+                        className="p-4 md:p-5 border border-white/10 rounded-full hover:bg-white hover:text-dark transition-all duration-500 bg-white/5 backdrop-blur-sm shadow-xl touch-manipulation"
                     >
                         <ChevronRight size={24} />
                     </button>
@@ -166,15 +185,22 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
                         onClick={() => setSelectedSuite(null)}
                         className="fixed inset-0 z-[110] bg-dark/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-6 cursor-zoom-out"
                     >
-                        {/* Close Button - More visible and closer to safe area */}
+                        {/* Close Button - Highly visible and safe for mobile */}
                         <button
-                            className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-[120] p-2"
-                            onClick={() => setSelectedSuite(null)}
+                            className="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-[140] pointer-events-auto touch-manipulation"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSuite(null);
+                            }}
                         >
-                            <X size={32} strokeWidth={1.5} />
+                            <X size={26} strokeWidth={2} />
                         </button>
 
-                        <div className="relative w-full max-w-5xl h-[70vh] md:h-[80vh] flex items-center justify-center pointer-events-none">
+                        <div
+                            className="relative w-full max-w-5xl h-[70vh] md:h-[80vh] flex items-center justify-center pointer-events-auto touch-pan-y"
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
+                        >
                             <AnimatePresence mode="wait">
                                 <motion.img
                                     key={currentPhotoIndex}
@@ -183,31 +209,31 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 1.05 }}
                                     transition={{ duration: 0.3, ease: 'easeOut' }}
-                                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-auto cursor-default"
-                                    onClick={(e) => e.stopPropagation()} // Keep propagation on image to allow swiping/future features, or remove to close
+                                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-auto cursor-default select-none"
+                                    onClick={(e) => e.stopPropagation()}
                                 />
                             </AnimatePresence>
 
-                            {/* Navigation buttons - Positioned for better reach */}
+                            {/* Navigation buttons */}
                             {selectedSuite.gallery && selectedSuite.gallery.length > 1 && (
                                 <>
-                                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-2 md:-mx-20 pointer-events-none">
+                                    <div className="absolute inset-x-2 md:-mx-16 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none z-[130]">
                                         <button
                                             onClick={prevPhoto}
-                                            className="p-3 md:p-5 rounded-full bg-white/5 border border-white/10 text-white hover:bg-gold transition-all pointer-events-auto"
+                                            className="p-3 md:p-5 rounded-full bg-black/60 border border-white/20 text-white hover:bg-gold transition-all pointer-events-auto touch-manipulation shadow-2xl active:scale-95"
                                         >
                                             <ChevronLeft size={24} />
                                         </button>
                                         <button
                                             onClick={nextPhoto}
-                                            className="p-3 md:p-5 rounded-full bg-white/5 border border-white/10 text-white hover:bg-gold transition-all pointer-events-auto"
+                                            className="p-3 md:p-5 rounded-full bg-black/60 border border-white/20 text-white hover:bg-gold transition-all pointer-events-auto touch-manipulation shadow-2xl active:scale-95"
                                         >
                                             <ChevronRight size={24} />
                                         </button>
                                     </div>
 
                                     {/* Photo Counter */}
-                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[9px] tracking-[0.4em] font-archivo font-black text-white/30 lowercase pointer-events-none">
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] tracking-[0.4em] font-archivo font-black text-white/50 uppercase pointer-events-none">
                                         {currentPhotoIndex + 1} de {selectedSuite.gallery.length}
                                     </div>
                                 </>

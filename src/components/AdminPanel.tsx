@@ -8,7 +8,7 @@ import {
   Ticket, ShoppingCart, HelpCircle, Globe, Settings, CheckCircle2,
   AlertCircle, Loader2, Menu, Search,
 } from 'lucide-react';
-import { uploadFile } from '../services/storageService';
+import { uploadFile, MediaFolder } from '../services/storageService';
 
 interface AdminPanelProps {
   data: PageData;
@@ -327,18 +327,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
               <div className="space-y-3">
                 <p className="text-xs text-white/30 mb-4 leading-relaxed">Usa ↑↓ para reordenar las secciones. El ojo las muestra u oculta en el menú y en la página.</p>
                 {formData.sectionOrder.map((id, idx) => (
-                  <div key={id} className="flex items-center gap-3 p-4 bg-white/4 rounded-xl border border-white/8">
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button onClick={() => moveSection(idx, 'up')} disabled={idx === 0} className="p-1.5 hover:bg-white/10 rounded transition-colors disabled:opacity-20"><ChevronUp size={13} /></button>
-                      <button onClick={() => moveSection(idx, 'down')} disabled={idx === formData.sectionOrder.length - 1} className="p-1.5 hover:bg-white/10 rounded transition-colors disabled:opacity-20"><ChevronDown size={13} /></button>
-                    </div>
-                    <button
-                      onClick={() => toggleSectionVisibility(id)}
-                      className={`p-2 rounded-lg transition-all shrink-0 ${formData.hiddenSections?.includes(id) ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}
-                    >
-                      {formData.hiddenSections?.includes(id) ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                    <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <RPItemCard key={id} label={formData.sectionLabels[id] || id} compact isFirst={idx === 0} isLast={idx === formData.sectionOrder.length - 1} 
+                    onMoveUp={() => moveSection(idx, 'up')} onMoveDown={() => moveSection(idx, 'down')}
+                    hidden={formData.hiddenSections?.includes(id)}
+                    onToggleHide={() => toggleSectionVisibility(id)}
+                    hideRemove
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <span className="text-[9px] text-white/20 font-black tracking-widest uppercase">ID interno</span>
                         <p className="text-xs text-white/30 font-mono mt-0.5 truncate">{id}</p>
@@ -349,7 +344,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                         onChange={v => setFormData(prev => ({ ...prev, sectionLabels: { ...prev.sectionLabels, [id]: v } }))}
                       />
                     </div>
-                  </div>
+                  </RPItemCard>
                 ))}
               </div>
             )}
@@ -365,8 +360,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                   <RPInput label="URL del Botón (ej: #buy)" value={formData.hero.ctaUrl} onChange={v => handleChange('hero', 'ctaUrl', v)} placeholder="#buy o https://..." />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <RPInput label="Imagen de Fondo (URL)" value={formData.hero.bgImage} onChange={v => handleChange('hero', 'bgImage', v)} icon={<ImageIcon size={15} />} placeholder="https://..." />
-                  <RPInput label="Video de Fondo (URL MP4 / YouTube)" value={formData.hero.videoUrl} onChange={v => handleChange('hero', 'videoUrl', v)} icon={<List size={15} />} placeholder="https://..." />
+                  <RPSmartMediaInput
+                    label="Imagen de Fondo"
+                    value={formData.hero.bgImage || ''}
+                    onChange={v => handleChange('hero', 'bgImage', v)}
+                    folder="hero"
+                    accept="image/*"
+                    type="image"
+                    placeholder="Subir imagen a R2 o pegar URL..."
+                  />
+                  <RPSmartMediaInput
+                    label="Video de Fondo (MP4 / YouTube)"
+                    value={formData.hero.videoUrl || ''}
+                    onChange={v => handleChange('hero', 'videoUrl', v)}
+                    folder="hero"
+                    accept="video/*"
+                    type="video"
+                    placeholder="Subir video MP4 a R2 o URL YouTube..."
+                  />
                 </div>
               </div>
             )}
@@ -394,8 +405,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                     <RPInput label="Título" value={formData.welcome.title1} onChange={v => handleChange('welcome', 'title1', v)} />
                     <RPTextArea label="Descripción" value={formData.welcome.desc1} onChange={v => handleChange('welcome', 'desc1', v)} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <RPInput label="Imagen (URL)" value={formData.welcome.img1} onChange={v => handleChange('welcome', 'img1', v)} icon={<ImageIcon size={15} />} />
-                      <RPInput label="Video (URL MP4 / YouTube)" value={formData.welcome.video1 || ''} onChange={v => handleChange('welcome', 'video1', v)} icon={<List size={15} />} />
+                      <RPSmartMediaInput label="Imagen Bloque 1" value={formData.welcome.img1 || ''} onChange={v => handleChange('welcome', 'img1', v)} folder="branding" accept="image/*" type="image" />
+                      <RPSmartMediaInput label="Video Bloque 1 (MP4 / YouTube)" value={formData.welcome.video1 || ''} onChange={v => handleChange('welcome', 'video1', v)} folder="branding" accept="video/*" type="video" />
                     </div>
                     {/* Accordion */}
                     <div className="space-y-3 pt-2 border-t border-white/5">
@@ -427,8 +438,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                     <RPInput label="Título" value={formData.welcome.title2} onChange={v => handleChange('welcome', 'title2', v)} />
                     <RPTextArea label="Descripción" value={formData.welcome.desc2} onChange={v => handleChange('welcome', 'desc2', v)} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <RPInput label="Imagen (URL)" value={formData.welcome.img2} onChange={v => handleChange('welcome', 'img2', v)} icon={<ImageIcon size={15} />} />
-                      <RPInput label="Video (URL MP4 / YouTube)" value={formData.welcome.video2 || ''} onChange={v => handleChange('welcome', 'video2', v)} icon={<List size={15} />} />
+                      <RPSmartMediaInput label="Imagen Bloque 2" value={formData.welcome.img2 || ''} onChange={v => handleChange('welcome', 'img2', v)} folder="branding" accept="image/*" type="image" />
+                      <RPSmartMediaInput label="Video Bloque 2 (MP4 / YouTube)" value={formData.welcome.video2 || ''} onChange={v => handleChange('welcome', 'video2', v)} folder="branding" accept="video/*" type="video" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <RPInput label="Texto Botón" value={formData.welcome.btnText2} onChange={v => handleChange('welcome', 'btnText2', v)} />
@@ -484,10 +495,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <RPInput label="Horario" value={artist.time} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], time: v }; handleChange('lineup', 'artists', a); }} icon={<Clock size={14} />} placeholder="22:00 - 00:00" />
-                      <RPInput label="Imagen (URL)" value={artist.img} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], img: v }; handleChange('lineup', 'artists', a); }} icon={<ImageIcon size={14} />} />
+                      <RPSmartMediaInput label="Foto del Artista" value={artist.img || ''} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], img: v }; handleChange('lineup', 'artists', a); }} folder="artists" accept="image/*" type="image" />
                     </div>
                     <RPTextArea label="Biografía" value={artist.bio || ''} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], bio: v }; handleChange('lineup', 'artists', a); }} rows={3} />
-                    <RPInput label="Video YouTube (URL)" value={artist.videoUrl || ''} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], videoUrl: v }; handleChange('lineup', 'artists', a); }} icon={<Youtube size={14} />} />
+                    <RPSmartMediaInput label="Video de Presentación (MP4 / YouTube)" value={artist.videoUrl || ''} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], videoUrl: v }; handleChange('lineup', 'artists', a); }} folder="artists" accept="video/*" type="video" />
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                       <RPInput label="Instagram" value={artist.instagram || ''} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], instagram: v }; handleChange('lineup', 'artists', a); }} icon={<Instagram size={13} />} />
                       <RPInput label="Spotify" value={artist.spotify || ''} onChange={v => { const a = [...formData.lineup.artists]; a[idx] = { ...a[idx], spotify: v }; handleChange('lineup', 'artists', a); }} icon={<Music2 size={13} />} />
@@ -519,7 +530,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                       <RPInput label="Duración" value={item.duration || ''} onChange={v => handleNestedChange('experience', idx, 'duration', v)} icon={<Clock size={14} />} placeholder="Ej: 2 horas" />
                     </div>
                     <RPTextArea label="Descripción" value={item.desc} onChange={v => handleNestedChange('experience', idx, 'desc', v)} rows={3} />
-                    <RPInput label="Imagen (URL)" value={item.img} onChange={v => handleNestedChange('experience', idx, 'img', v)} icon={<ImageIcon size={14} />} />
+                    <RPSmartMediaInput label="Imagen de la Experiencia" value={item.img || ''} onChange={v => handleNestedChange('experience', idx, 'img', v)} folder="experiences" accept="image/*" type="image" />
                   </RPItemCard>
                 ))}
               </div>
@@ -556,7 +567,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                       <RPInput label="Texto Botón" value={suite.btnText || ''} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], btnText: v }; handleChange('lodging', 'suites', s); }} />
                       <RPInput label="URL Botón" value={suite.btnUrl || ''} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], btnUrl: v }; handleChange('lodging', 'suites', s); }} placeholder="#buy o https://..." />
                     </div>
-                    <RPInput label="Imagen Principal (URL)" value={suite.img} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], img: v }; handleChange('lodging', 'suites', s); }} icon={<ImageIcon size={14} />} />
+                    <RPSmartMediaInput label="Imagen Principal de la Suite" value={suite.img || ''} onChange={v => { const s = [...formData.lodging.suites]; s[idx] = { ...s[idx], img: v }; handleChange('lodging', 'suites', s); }} folder="lodging" accept="image/*" type="image" />
                     {/* Galería de fotos */}
                     <div className="pt-4 border-t border-white/5 space-y-3">
                       <div className="flex items-center justify-between">
@@ -567,14 +578,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                         >+ Añadir Foto</button>
                       </div>
                       {(suite.gallery || []).map((photo, pIdx) => (
-                        <div key={pIdx} className="flex items-center gap-2">
+                        <div key={pIdx} className="flex items-start gap-2">
                           <div className="flex-1">
-                            <RPInput label="" placeholder="URL de la imagen" value={photo} icon={<ImageIcon size={13} />}
+                            <RPSmartMediaInput label={`Foto ${pIdx + 1}`} value={photo || ''} folder="lodging" accept="image/*" type="image"
                               onChange={v => { const s = [...formData.lodging.suites]; const g = [...(s[idx].gallery || [])]; g[pIdx] = v; s[idx] = { ...s[idx], gallery: g }; handleChange('lodging', 'suites', s); }} />
                           </div>
                           <button
                             onClick={() => { const s = [...formData.lodging.suites]; const g = (s[idx].gallery || []).filter((_, i) => i !== pIdx); s[idx] = { ...s[idx], gallery: g }; handleChange('lodging', 'suites', s); }}
-                            className="p-3 text-white/20 hover:text-red-400 transition-colors shrink-0"
+                            className="p-3 text-white/20 hover:text-red-400 transition-colors shrink-0 mt-7"
                           ><Trash2 size={14} /></button>
                         </div>
                       ))}
@@ -641,7 +652,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                       <RPInput label="Nombre del Tier" value={tier.name} onChange={v => { const t = [...formData.tickets.tiers]; t[idx] = { ...t[idx], name: v }; handleChange('tickets', 'tiers', t); }} />
                       <RPInput label="Precio" value={tier.price} onChange={v => { const t = [...formData.tickets.tiers]; t[idx] = { ...t[idx], price: v }; handleChange('tickets', 'tiers', t); }} icon={<DollarSign size={14} />} placeholder="$450.000 COP" />
                     </div>
-                    <RPInput label="Imagen de Fondo (URL)" value={tier.bgImage || ''} onChange={v => { const t = [...formData.tickets.tiers]; t[idx] = { ...t[idx], bgImage: v }; handleChange('tickets', 'tiers', t); }} icon={<ImageIcon size={14} />} />
+                    <RPSmartMediaInput label="Imagen de Fondo del Tier" value={tier.bgImage || ''} onChange={v => { const t = [...formData.tickets.tiers]; t[idx] = { ...t[idx], bgImage: v }; handleChange('tickets', 'tiers', t); }} folder="tickets" accept="image/*" type="image" />
                     <RPTextArea label="Características (una por línea)" value={(tier.features || []).join('\n')} onChange={v => { const t = [...formData.tickets.tiers]; t[idx] = { ...t[idx], features: v.split('\n').filter(Boolean) }; handleChange('tickets', 'tiers', t); }} rows={5} placeholder={'Acceso General 3 días\nWelcome Drink\nZona de Descanso'} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <RPInput label="Texto del Botón" value={tier.btnText || 'COMPRAR AHORA'} onChange={v => { const t = [...formData.tickets.tiers]; t[idx] = { ...t[idx], btnText: v }; handleChange('tickets', 'tiers', t); }} />
@@ -725,8 +736,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
                   <RPInput label="Palabras Clave (Keywords)" value={formData.seo.keywords || ''} onChange={v => handleChange('seo', 'keywords', v)} placeholder="eventos, colombia, musica, real people..." />
                 </div>
                 <div className="space-y-3">
-                  <span className="text-xs font-bold tracking-widest uppercase text-white/40 block">Imagen de Previsualización (1200 × 630 px recomendado)</span>
-                  <RPFileUpload label="Subir Imagen SEO" url={formData.seo.image} onFileSelect={(e: any) => handleFileUpload(e, 'seoImage')} isUploading={isUploading === 'seoImage'} onClear={() => handleChange('seo', 'image', '')} accept="image/*" placeholder="Subir imagen (JPG, PNG, WEBP)" />
+                  <RPSmartMediaInput
+                    label="Imagen de Previsualización SEO (1200 × 630 px)"
+                    value={formData.seo.image || ''}
+                    onChange={v => handleChange('seo', 'image', v)}
+                    folder="branding"
+                    accept="image/*"
+                    type="image"
+                  />
                 </div>
                 <div className="p-4 rounded-xl bg-emerald-500/8 border border-emerald-500/15">
                   <p className="text-[11px] text-emerald-400 leading-relaxed">💡 <strong>Tip:</strong> Después de guardar, si compartes el link en WhatsApp y no ves el cambio, es por caché. Puede tardar unas horas en reflejarse.</p>
@@ -917,8 +934,133 @@ const RPSelect = ({
 const isImageUrl = (url?: string | null) =>
   !!url && (/\.(jpg|jpeg|png|webp|gif|svg|avif|ico)(\?|$)/i.test(url) || url.includes('r2.dev') || url.includes('/storage/'));
 
+const isVideoUrl = (url?: string | null) =>
+  !!url && (/\.(mp4|webm|mov|ogg)(\?|$)/i.test(url) || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com'));
+
 const isFontUrl = (url?: string | null) =>
   !!url && /\.(woff2?|ttf|otf)(\?|$)/i.test(url);
+
+interface RPSmartMediaInputProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  folder?: MediaFolder;
+  accept?: string;
+  placeholder?: string;
+  helper?: string;
+  type?: 'image' | 'video' | 'any';
+}
+
+const RPSmartMediaInput: React.FC<RPSmartMediaInputProps> = ({
+  label,
+  value,
+  onChange,
+  folder = 'branding',
+  accept = 'image/*',
+  placeholder = 'Subir archivo a Cloudflare R2 o pegar URL...',
+  helper,
+  type = 'any',
+}) => {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploading(true);
+      const targetFolder: MediaFolder = (folder as MediaFolder) || 'branding';
+      const res = await uploadFile(file, targetFolder);
+      onChange(res.url);
+    } catch (err: any) {
+      alert(`Error al subir archivo: ${err?.message || 'Error desconocido'}`);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const isImg = isImageUrl(value);
+  const isVid = isVideoUrl(value);
+
+  return (
+    <div className="space-y-2">
+      {label && <label className="block text-xs font-bold tracking-wider uppercase text-white/40">{label}</label>}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
+        {/* Preview box if value is set */}
+        {value ? (
+          <div className="relative rounded-lg overflow-hidden border border-white/10 bg-black/40 group">
+            {isImg && (
+              <img
+                src={value}
+                alt="Preview"
+                className="w-full h-36 object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            {isVid && !isImg && (
+              <div className="w-full h-36 bg-zinc-900 flex flex-col items-center justify-center p-3 relative">
+                {value.includes('youtube.com') || value.includes('youtu.be') ? (
+                  <Youtube size={36} className="text-red-500 mb-1" />
+                ) : (
+                  <video src={value} className="w-full h-full object-cover rounded" muted loop autoPlay />
+                )}
+                <span className="text-[10px] text-white/60 font-mono mt-1 truncate max-w-full px-2">{value}</span>
+              </div>
+            )}
+            {!isImg && !isVid && (
+              <div className="w-full py-4 px-3 flex items-center gap-2 text-xs text-white/60">
+                <ImageIcon size={16} className="text-amber-400 shrink-0" />
+                <span className="truncate">{value}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white/70 hover:text-red-400 hover:bg-red-500/20 transition-all z-10"
+              title="Eliminar archivo"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Input & R2 Upload Button */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={value ?? ''}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full bg-black/30 border border-white/10 rounded-lg py-2.5 px-3 text-xs text-white placeholder-white/20 focus:border-white/30 focus:outline-none transition-colors"
+            />
+          </div>
+          <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg cursor-pointer text-xs font-bold tracking-wider text-white uppercase transition-all shrink-0">
+            <input
+              type="file"
+              accept={accept}
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="hidden"
+            />
+            {uploading ? (
+              <>
+                <Loader2 size={14} className="animate-spin text-amber-400" />
+                <span>Subiendo...</span>
+              </>
+            ) : (
+              <>
+                <Plus size={14} className="text-amber-400" />
+                <span>Subir {type === 'video' ? 'Video' : type === 'image' ? 'Imagen' : 'Archivo'}</span>
+              </>
+            )}
+          </label>
+        </div>
+      </div>
+      {helper && <p className="text-[11px] text-white/30 leading-relaxed">{helper}</p>}
+    </div>
+  );
+};
 
 const RPFileUpload = ({
   label, url, onFileSelect, isUploading, onClear,
@@ -970,25 +1112,43 @@ const SectionHeader = ({ icon, label, accent }: { icon: React.ReactNode; label: 
 interface RPItemCardProps {
   key?: any;
   label: string; hidden: boolean; badge?: string;
-  onToggleHide: () => void; onMoveUp: () => void; onMoveDown: () => void; onRemove: () => void;
-  isFirst: boolean; isLast: boolean; compact?: boolean; children: React.ReactNode;
+  onToggleHide: () => void; onMoveUp: () => void; onMoveDown: () => void; onRemove?: () => void;
+  isFirst: boolean; isLast: boolean; compact?: boolean; defaultOpen?: boolean; hideRemove?: boolean; children: React.ReactNode;
 }
 
-const RPItemCard = ({ label, hidden, badge, onToggleHide, onMoveUp, onMoveDown, onRemove, isFirst, isLast, compact = false, children }: RPItemCardProps) => (
-  <div className={`rounded-xl border transition-all ${hidden ? 'border-red-500/20 opacity-60 grayscale' : 'border-white/8'}`}>
-    <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-      <div className="flex items-center gap-2 overflow-hidden">
-        <span className="text-xs font-black tracking-wider uppercase text-white/40 truncate">{label}</span>
-        {badge && <span className="text-[9px] font-black tracking-widest bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full uppercase shrink-0">{badge}</span>}
-        {hidden && <span className="text-[9px] font-black tracking-widest bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full uppercase shrink-0">Oculto</span>}
+const RPItemCard = ({
+  label, hidden, badge, onToggleHide, onMoveUp, onMoveDown, onRemove,
+  isFirst, isLast, compact = false, defaultOpen = false, hideRemove = false, children
+}: RPItemCardProps) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className={`rounded-xl border transition-all ${hidden ? 'border-red-500/20 opacity-60 grayscale bg-red-950/10' : 'border-white/8 bg-white/4'}`}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 select-none">
+        <div
+          onClick={() => setIsOpen(prev => !prev)}
+          className="flex items-center gap-2.5 overflow-hidden cursor-pointer flex-1 py-1"
+        >
+          <button
+            type="button"
+            className="p-1 rounded text-white/40 hover:text-white transition-colors"
+          >
+            {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <span className="text-xs font-black tracking-wider uppercase text-white/80 truncate">{label}</span>
+          {badge && <span className="text-[9px] font-black tracking-widest bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full uppercase shrink-0">{badge}</span>}
+          {hidden && <span className="text-[9px] font-black tracking-widest bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full uppercase shrink-0">Oculto</span>}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button onClick={onToggleHide} className={`p-2 rounded-lg transition-all ${hidden ? 'text-red-400 hover:bg-red-500/10' : 'text-emerald-400 hover:bg-emerald-500/10'}`}>{hidden ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+          <button onClick={onMoveUp} disabled={isFirst} className="p-2 rounded-lg text-white/25 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all"><ChevronUp size={14} /></button>
+          <button onClick={onMoveDown} disabled={isLast} className="p-2 rounded-lg text-white/25 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all"><ChevronDown size={14} /></button>
+          {!hideRemove && onRemove && (
+            <button onClick={onRemove} className="p-2 rounded-lg text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 size={14} /></button>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-0.5 shrink-0">
-        <button onClick={onToggleHide} className={`p-2 rounded-lg transition-all ${hidden ? 'text-red-400 hover:bg-red-500/10' : 'text-emerald-400 hover:bg-emerald-500/10'}`}>{hidden ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-        <button onClick={onMoveUp} disabled={isFirst} className="p-2 rounded-lg text-white/25 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all"><ChevronUp size={14} /></button>
-        <button onClick={onMoveDown} disabled={isLast} className="p-2 rounded-lg text-white/25 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all"><ChevronDown size={14} /></button>
-        <button onClick={onRemove} className="p-2 rounded-lg text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 size={14} /></button>
-      </div>
+      {isOpen && <div className={`${compact ? 'p-4' : 'p-5'} space-y-4`}>{children}</div>}
     </div>
-    <div className={`${compact ? 'p-4' : 'p-5'} space-y-4`}>{children}</div>
-  </div>
-);
+  );
+};
