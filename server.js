@@ -238,15 +238,13 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
 
     console.log(`[Upload] 📥 Iniciando subida — folder: ${folder}, name: ${origName}, type: ${contentType}`);
 
-    // Tipos de archivo permitidos
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/webp',
-      'image/gif', 'image/svg+xml',
-      'video/mp4', 'video/webm',
-      'font/woff', 'font/woff2', 'font/ttf', 'font/otf',
-    ];
+    // Tipos de archivo permitidos (imágenes, videos, fuentes o octet-stream)
+    const isImage = contentType.startsWith('image/');
+    const isVideo = contentType.startsWith('video/');
+    const isFont  = contentType.startsWith('font/') || contentType.includes('font');
+    const isOctet = contentType === 'application/octet-stream';
 
-    if (!allowedTypes.includes(contentType)) {
+    if (!isImage && !isVideo && !isFont && !isOctet) {
       return res.status(400).json({ error: `Tipo de archivo no permitido: ${contentType}` });
     }
 

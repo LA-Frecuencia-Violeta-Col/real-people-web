@@ -47,8 +47,8 @@ export async function uploadFile(
   file: File,
   folder: MediaFolder
 ): Promise<UploadResult> {
-  // 1. Validar el archivo antes de cualquier petición
-  const validation = validateImageFile(file);
+  // 1. Validar el archivo (imágenes, videos o fuentes)
+  const validation = validateMediaFile(file);
   if (!validation.valid) {
     throw new Error(validation.error);
   }
@@ -59,14 +59,16 @@ export async function uploadFile(
   // 3. Subir el archivo al servidor Express (que lo reenvía a R2)
   //    Enviamos el archivo como binario puro en el body.
   //    El Content-Type real del archivo va en el header x-file-content-type.
+  const contentType = file.type || 'application/octet-stream';
+
   const uploadRes = await fetch(
     `/api/upload?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(file.name)}`,
     {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': file.type,
-        'x-file-content-type': file.type,
+        'Content-Type': contentType,
+        'x-file-content-type': contentType,
       },
       body: file,
     }
@@ -94,33 +96,43 @@ export async function uploadFile(
 
 /**
  * Valida un archivo antes de subirlo.
- * Verifica tipo MIME y tamaño máximo (10MB por defecto).
+ * Soporta imágenes, videos y fuentes con límites adecuados.
  */
+export function validateMediaFile(
+  file: File
+): { valid: boolean; error?: string } {
+  const type = file.type || '';
+  const isImage = type.startsWith('image/');
+  const isVideo = type.startsWith('video/');
+  const isFont = type.startsWith('font/') || type.includes('font') || /\.(woff2?|ttf|otf)$/i.test(file.name);
+
+  if (!isImage && !isVideo && !isFont) {
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const validExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'mp4', 'webm', 'mov', 'm4v', 'avi', 'mkv', 'woff', 'woff2', 'ttf', 'otf'];
+    if (!validExts.includes(ext)) {
+      return {
+        valid: false,
+        error: 'Formato no permitido. Sube imágenes (JPG, PNG, WEBP), videos (MP4, MOV, WEBM) o fuentes.',
+      };
+    }
+  }
+
+  // Límite de tamaño: 100MB para videos, 15MB para imágenes/fuentes
+  const isVid = isVideo || /\.(mp4|webm|mov|m4v|avi|mkv)$/i.test(file.name);
+  const maxBytes = isVid ? 100 * 1024 * 1024 : 15 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    const maxMB = isVid ? 100 : 15;
+    return { valid: false, error: `El archivo excede el tamaño máximo permitido (${maxMB}MB).` };
+  }
+
+  return { valid: true };
+}
+
 export function validateImageFile(
   file: File,
   maxMB = 10
 ): { valid: boolean; error?: string } {
-  const allowedTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/gif',
-    'image/svg+xml',
-  ];
-
-  if (!allowedTypes.includes(file.type)) {
-    return {
-      valid: false,
-      error: 'Formato no permitido. Usa JPG, PNG, WEBP, GIF o SVG.',
-    };
-  }
-
-  const maxBytes = maxMB * 1024 * 1024;
-  if (file.size > maxBytes) {
-    return { valid: false, error: `El archivo excede ${maxMB}MB.` };
-  }
-
-  return { valid: true };
+  return validateMediaFile(file);
 }
 
 /**
