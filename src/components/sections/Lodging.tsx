@@ -182,24 +182,40 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={() => setSelectedSuite(null)}
-                        className="fixed inset-0 z-[110] bg-dark/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-6 cursor-zoom-out"
+                        onClick={(e) => {
+                            // Solo cerrar si el clic es directamente sobre el fondo negro,
+                            // no sobre los botones, imagen, ni ningún elemento hijo
+                            if (e.target === e.currentTarget) {
+                                setSelectedSuite(null);
+                            }
+                        }}
+                        className="fixed inset-0 z-[200] bg-black/97 backdrop-blur-xl flex items-center justify-center p-4 md:p-6 select-none"
+                        style={{ touchAction: 'none' }}
                     >
-                        {/* Close Button - Highly visible and safe for mobile */}
+                        {/* Close Button */}
                         <button
-                            className="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-[140] pointer-events-auto touch-manipulation"
+                            type="button"
+                            className="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-[210] touch-manipulation"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedSuite(null);
                             }}
+                            onTouchEnd={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedSuite(null);
+                            }}
+                            aria-label="Cerrar galería"
                         >
                             <X size={26} strokeWidth={2} />
                         </button>
 
+                        {/* Main image container — handles swipe */}
                         <div
-                            className="relative w-full max-w-5xl h-[70vh] md:h-[80vh] flex items-center justify-center pointer-events-auto touch-pan-y"
+                            className="relative w-full max-w-5xl h-[70vh] md:h-[80vh] flex items-center justify-center"
                             onTouchStart={handleTouchStart}
                             onTouchEnd={handleTouchEnd}
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <AnimatePresence mode="wait">
                                 <motion.img
@@ -209,32 +225,74 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 1.05 }}
                                     transition={{ duration: 0.3, ease: 'easeOut' }}
-                                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl pointer-events-auto cursor-default select-none"
-                                    onClick={(e) => e.stopPropagation()}
+                                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl select-none"
+                                    draggable={false}
                                 />
                             </AnimatePresence>
 
-                            {/* Navigation buttons */}
+                            {/* Navigation buttons — completely independent positioning */}
                             {selectedSuite.gallery && selectedSuite.gallery.length > 1 && (
                                 <>
-                                    <div className="absolute inset-x-2 md:-mx-16 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none z-[130]">
-                                        <button
-                                            onClick={prevPhoto}
-                                            className="p-3 md:p-5 rounded-full bg-black/60 border border-white/20 text-white hover:bg-gold transition-all pointer-events-auto touch-manipulation shadow-2xl active:scale-95"
-                                        >
-                                            <ChevronLeft size={24} />
-                                        </button>
-                                        <button
-                                            onClick={nextPhoto}
-                                            className="p-3 md:p-5 rounded-full bg-black/60 border border-white/20 text-white hover:bg-gold transition-all pointer-events-auto touch-manipulation shadow-2xl active:scale-95"
-                                        >
-                                            <ChevronRight size={24} />
-                                        </button>
+                                    {/* Left button */}
+                                    <button
+                                        type="button"
+                                        className="absolute left-0 md:-left-16 top-1/2 -translate-y-1/2 p-4 md:p-5 rounded-full bg-black/70 border border-white/20 text-white hover:bg-gold hover:border-gold transition-all z-[210] touch-manipulation shadow-2xl active:scale-95"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            prevPhoto();
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            prevPhoto();
+                                        }}
+                                        aria-label="Foto anterior"
+                                    >
+                                        <ChevronLeft size={24} />
+                                    </button>
+
+                                    {/* Right button */}
+                                    <button
+                                        type="button"
+                                        className="absolute right-0 md:-right-16 top-1/2 -translate-y-1/2 p-4 md:p-5 rounded-full bg-black/70 border border-white/20 text-white hover:bg-gold hover:border-gold transition-all z-[210] touch-manipulation shadow-2xl active:scale-95"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            nextPhoto();
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            nextPhoto();
+                                        }}
+                                        aria-label="Foto siguiente"
+                                    >
+                                        <ChevronRight size={24} />
+                                    </button>
+
+                                    {/* Photo counter */}
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] tracking-[0.4em] font-archivo font-black text-white/50 uppercase pointer-events-none select-none">
+                                        {currentPhotoIndex + 1} DE {selectedSuite.gallery.length}
                                     </div>
 
-                                    {/* Photo Counter */}
-                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] tracking-[0.4em] font-archivo font-black text-white/50 uppercase pointer-events-none">
-                                        {currentPhotoIndex + 1} de {selectedSuite.gallery.length}
+                                    {/* Dot indicators */}
+                                    <div className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-2">
+                                        {selectedSuite.gallery.map((_, i) => (
+                                            <button
+                                                key={i}
+                                                type="button"
+                                                className={`w-2 h-2 rounded-full transition-all touch-manipulation ${i === currentPhotoIndex ? 'bg-gold scale-125' : 'bg-white/30'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCurrentPhotoIndex(i);
+                                                }}
+                                                onTouchEnd={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setCurrentPhotoIndex(i);
+                                                }}
+                                                aria-label={`Ir a foto ${i + 1}`}
+                                            />
+                                        ))}
                                     </div>
                                 </>
                             )}
