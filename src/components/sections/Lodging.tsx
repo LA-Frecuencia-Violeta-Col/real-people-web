@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     ChevronLeft,
@@ -11,7 +11,10 @@ import { PageData, SuiteItem } from '../../types';
 export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
     const [selectedSuite, setSelectedSuite] = useState<SuiteItem | null>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-    const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+    // useRef instead of useState — no re-renders during touch, no event routing issues
+    const touchStartX = useRef<number | null>(null);
+    const touchStartY = useRef<number | null>(null);
 
     // Close modal on Esc key
     useEffect(() => {
@@ -22,19 +25,28 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
         return () => window.removeEventListener('keydown', handleEsc);
     }, []);
 
-    // Prevent scroll when modal is open
+    // Prevent body scroll when modal is open
     useEffect(() => {
         if (selectedSuite) {
             document.body.style.overflow = 'hidden';
         } else {
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = '';
         }
+        return () => { document.body.style.overflow = ''; };
     }, [selectedSuite]);
 
+    const getPhotos = (suite: SuiteItem) =>
+        suite.gallery && suite.gallery.length > 0
+            ? suite.gallery
+            : suite.img ? [suite.img] : [];
+
+    const photos = selectedSuite ? getPhotos(selectedSuite) : [];
+
+    // Scroll the lodging card slider
     const scroll = (direction: 'left' | 'right') => {
         const container = document.getElementById('lodging-slider');
         if (container) {
-            const scrollAmount = container.clientWidth * 0.8;
+            const scrollAmount = container.clientWidth * 0.85;
             container.scrollBy({
                 left: direction === 'left' ? -scrollAmount : scrollAmount,
                 behavior: 'smooth'
@@ -42,36 +54,35 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
         }
     };
 
-    const nextPhoto = (e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        if (selectedSuite?.gallery && selectedSuite.gallery.length > 0) {
-            setCurrentPhotoIndex((prev) => (prev + 1) % selectedSuite.gallery!.length);
+    const nextPhoto = () => {
+        if (photos.length > 1) {
+            setCurrentPhotoIndex(prev => (prev + 1) % photos.length);
         }
     };
 
-    const prevPhoto = (e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        if (selectedSuite?.gallery && selectedSuite.gallery.length > 0) {
-            setCurrentPhotoIndex((prev) => (prev - 1 + selectedSuite.gallery!.length) % selectedSuite.gallery!.length);
+    const prevPhoto = () => {
+        if (photos.length > 1) {
+            setCurrentPhotoIndex(prev => (prev - 1 + photos.length) % photos.length);
         }
     };
 
+    // Touch handlers attached to backdrop — no touchAction:none needed
     const handleTouchStart = (e: React.TouchEvent) => {
-        setTouchStartX(e.touches[0].clientX);
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
     };
 
     const handleTouchEnd = (e: React.TouchEvent) => {
-        if (touchStartX === null) return;
-        const touchEndX = e.changedTouches[0].clientX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > 40) {
-            if (diff > 0) {
-                nextPhoto();
-            } else {
-                prevPhoto();
-            }
+        if (touchStartX.current === null || touchStartY.current === null) return;
+        const dx = touchStartX.current - e.changedTouches[0].clientX;
+        const dy = touchStartY.current - e.changedTouches[0].clientY;
+        touchStartX.current = null;
+        touchStartY.current = null;
+        // Only navigate if horizontal swipe is dominant and long enough
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+            if (dx > 0) nextPhoto();
+            else prevPhoto();
         }
-        setTouchStartX(null);
     };
 
     return (
@@ -87,8 +98,8 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
 
                 <div
                     id="lodging-slider"
-                    className="flex space-x-6 md:space-x-8 overflow-x-auto pb-10 md:pb-12 scrollbar-hide snap-x snap-mandatory touch-pan-x"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
+                    className="flex space-x-6 md:space-x-8 overflow-x-auto pb-10 md:pb-12 scrollbar-hide snap-x snap-mandatory"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
                 >
                     {(data.suites || []).filter(suite => !suite.hidden).map((suite, idx) => (
                         <motion.div
@@ -175,128 +186,119 @@ export const Lodging = ({ data }: { data: PageData['lodging'] }) => {
                 </div>
             </div>
 
-            {/* Gallery Modal */}
+            {/* ─── Gallery Modal ─── */}
             <AnimatePresence>
                 {selectedSuite && (
                     <motion.div
+                        key="gallery-modal"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center select-none"
+                        style={{ zIndex: 9999 }}
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={handleTouchEnd}
                         onClick={(e) => {
-                            // Solo cerrar si el clic es directamente sobre el fondo negro,
-                            // no sobre los botones, imagen, ni ningún elemento hijo
+                            // Only close when tapping directly on the black backdrop (not on any child)
                             if (e.target === e.currentTarget) {
                                 setSelectedSuite(null);
                             }
                         }}
-                        className="fixed inset-0 z-[200] bg-black/97 backdrop-blur-xl flex items-center justify-center p-4 md:p-6 select-none"
-                        style={{ touchAction: 'none' }}
                     >
-                        {/* Close Button */}
+                        {/* Close button */}
                         <button
                             type="button"
-                            className="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-[210] touch-manipulation"
+                            style={{ zIndex: 10001 }}
+                            className="absolute top-4 right-4 md:top-6 md:right-6 bg-white/10 hover:bg-white/25 text-white rounded-full p-3 touch-manipulation transition-colors"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedSuite(null);
                             }}
-                            onTouchEnd={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setSelectedSuite(null);
-                            }}
-                            aria-label="Cerrar galería"
+                            aria-label="Cerrar"
                         >
-                            <X size={26} strokeWidth={2} />
+                            <X size={24} strokeWidth={2} />
                         </button>
 
-                        {/* Main image container — handles swipe */}
+                        {/* Image + nav container — stopPropagation so clicks here don't reach backdrop */}
                         <div
-                            className="relative w-full max-w-5xl h-[70vh] md:h-[80vh] flex items-center justify-center"
-                            onTouchStart={handleTouchStart}
-                            onTouchEnd={handleTouchEnd}
+                            className="relative flex items-center justify-center w-full h-full px-16"
                             onClick={(e) => e.stopPropagation()}
                         >
+                            {/* Photo */}
                             <AnimatePresence mode="wait">
                                 <motion.img
                                     key={currentPhotoIndex}
-                                    src={selectedSuite.gallery?.[currentPhotoIndex] || selectedSuite.img}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 1.05 }}
-                                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl select-none"
+                                    src={photos[currentPhotoIndex] || selectedSuite.img}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl select-none"
                                     draggable={false}
+                                    style={{ zIndex: 10000 }}
                                 />
                             </AnimatePresence>
 
-                            {/* Navigation buttons — completely independent positioning */}
-                            {selectedSuite.gallery && selectedSuite.gallery.length > 1 && (
+                            {/* Nav buttons — only shown when multiple photos */}
+                            {photos.length > 1 && (
                                 <>
-                                    {/* Left button */}
+                                    {/* Left */}
                                     <button
                                         type="button"
-                                        className="absolute left-0 md:-left-16 top-1/2 -translate-y-1/2 p-4 md:p-5 rounded-full bg-black/70 border border-white/20 text-white hover:bg-gold hover:border-gold transition-all z-[210] touch-manipulation shadow-2xl active:scale-95"
+                                        style={{ zIndex: 10001 }}
+                                        className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/70 border border-white/20 text-white hover:bg-gold hover:border-gold transition-all touch-manipulation shadow-xl active:scale-95"
                                         onClick={(e) => {
-                                            e.stopPropagation();
-                                            prevPhoto();
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            e.preventDefault();
                                             e.stopPropagation();
                                             prevPhoto();
                                         }}
                                         aria-label="Foto anterior"
                                     >
-                                        <ChevronLeft size={24} />
+                                        <ChevronLeft size={22} />
                                     </button>
 
-                                    {/* Right button */}
+                                    {/* Right */}
                                     <button
                                         type="button"
-                                        className="absolute right-0 md:-right-16 top-1/2 -translate-y-1/2 p-4 md:p-5 rounded-full bg-black/70 border border-white/20 text-white hover:bg-gold hover:border-gold transition-all z-[210] touch-manipulation shadow-2xl active:scale-95"
+                                        style={{ zIndex: 10001 }}
+                                        className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/70 border border-white/20 text-white hover:bg-gold hover:border-gold transition-all touch-manipulation shadow-xl active:scale-95"
                                         onClick={(e) => {
-                                            e.stopPropagation();
-                                            nextPhoto();
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            e.preventDefault();
                                             e.stopPropagation();
                                             nextPhoto();
                                         }}
                                         aria-label="Foto siguiente"
                                     >
-                                        <ChevronRight size={24} />
+                                        <ChevronRight size={22} />
                                     </button>
-
-                                    {/* Photo counter */}
-                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] tracking-[0.4em] font-archivo font-black text-white/50 uppercase pointer-events-none select-none">
-                                        {currentPhotoIndex + 1} DE {selectedSuite.gallery.length}
-                                    </div>
-
-                                    {/* Dot indicators */}
-                                    <div className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex gap-2">
-                                        {selectedSuite.gallery.map((_, i) => (
-                                            <button
-                                                key={i}
-                                                type="button"
-                                                className={`w-2 h-2 rounded-full transition-all touch-manipulation ${i === currentPhotoIndex ? 'bg-gold scale-125' : 'bg-white/30'}`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setCurrentPhotoIndex(i);
-                                                }}
-                                                onTouchEnd={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setCurrentPhotoIndex(i);
-                                                }}
-                                                aria-label={`Ir a foto ${i + 1}`}
-                                            />
-                                        ))}
-                                    </div>
                                 </>
                             )}
                         </div>
+
+                        {/* Counter + dots */}
+                        {photos.length > 1 && (
+                            <div
+                                className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-3"
+                                style={{ zIndex: 10001 }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <span className="text-[10px] tracking-[0.4em] font-archivo font-black text-white/50 uppercase">
+                                    {currentPhotoIndex + 1} DE {photos.length}
+                                </span>
+                                <div className="flex gap-2">
+                                    {photos.map((_, i) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            className={`rounded-full transition-all touch-manipulation ${i === currentPhotoIndex ? 'bg-gold w-4 h-2' : 'bg-white/30 w-2 h-2'}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCurrentPhotoIndex(i);
+                                            }}
+                                            aria-label={`Foto ${i + 1}`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
