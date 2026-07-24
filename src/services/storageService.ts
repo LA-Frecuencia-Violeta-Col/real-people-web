@@ -39,6 +39,92 @@ export interface UploadResult {
 }
 
 /**
+ * Convierte una imagen a formato WebP usando Canvas / createImageBitmap del navegador.
+ * Mantiene intactos los archivos SVG, GIF, ya en WebP, fuentes y videos.
+ */
+export async function convertToWebP(file: File, quality = 0.85): Promise<File> {
+  const type = file.type || '';
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+  // No convertir si no es imagen, o si es SVG, GIF o ya es WEBP
+  const isImage = type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'bmp', 'tiff', 'heic', 'heif'].includes(ext);
+  const isExcluded = type === 'image/svg+xml' || type === 'image/gif' || type === 'image/webp' || ['svg', 'gif', 'webp'].includes(ext);
+
+  if (!isImage || isExcluded) {
+    console.log(`[WebP Converter] ℹ️ Omitiendo conversión para: ${file.name} (tipo: ${type || ext})`);
+    return file;
+  }
+
+  try {
+    let width = 0;
+    let height = 0;
+    let imageSource: CanvasImageSource;
+
+    // Intentar usando createImageBitmap (más rápido y confiable en navegadores modernos)
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(file);
+      width = bitmap.width;
+      height = bitmap.height;
+      imageSource = bitmap;
+    } else {
+      // Fallback usando HTMLImageElement
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        const url = URL.createObjectURL(file);
+        image.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(image);
+        };
+        image.onerror = (err) => {
+          URL.revokeObjectURL(url);
+          reject(err);
+        };
+        image.src = url;
+      });
+      width = img.width;
+      height = img.height;
+      imageSource = img;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.warn('[WebP Converter] ⚠️ No se pudo obtener context2d. Subiendo imagen original.');
+      return file;
+    }
+
+    ctx.drawImage(imageSource, 0, 0);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((b) => resolve(b), 'image/webp', quality);
+    });
+
+    if (!blob) {
+      console.warn('[WebP Converter] ⚠️ Falló la conversión a blob WebP. Subiendo original.');
+      return file;
+    }
+
+    const newFileName = file.name.replace(/\.[^/.]+$/, '') + '.webp';
+    const webpFile = new File([blob], newFileName, {
+      type: 'image/webp',
+      lastModified: Date.now(),
+    });
+
+    const origKB = (file.size / 1024).toFixed(1);
+    const webpKB = (webpFile.size / 1024).toFixed(1);
+    console.log(`[WebP Converter] ⚡ Convertido con éxito: ${file.name} (${origKB} KB) ➔ ${newFileName} (${webpKB} KB)`);
+
+    return webpFile;
+  } catch (err) {
+    console.error('[WebP Converter] ❌ Error durante la conversión a WebP. Subiendo archivo original:', err);
+    return file;
+  }
+}
+
+/**
  * Sube un archivo a Cloudflare R2 a través del servidor Express (proxy seguro).
  * El archivo viaja: Browser → /api/upload (Express) → Cloudflare R2.
  * De esta forma, el navegador nunca habla directamente con R2 (sin problemas CORS).
@@ -47,22 +133,23 @@ export async function uploadFile(
   file: File,
   folder: MediaFolder
 ): Promise<UploadResult> {
-  // 1. Validar el archivo (imágenes, videos o fuentes)
-  const validation = validateMediaFile(file);
+  // 1. Convertir imágenes (JPG, PNG, etc.) a WebP automáticamente antes de subir
+  const fileToUpload = await convertToWebP(file);
+
+  // 2. Validar el archivo (imágenes, videos o fuentes)
+  const validation = validateMediaFile(fileToUpload);
   if (!validation.valid) {
     throw new Error(validation.error);
   }
 
-  // 2. Obtener token de administrador
+  // 3. Obtener token de administrador
   const token = getAdminToken();
 
-  // 3. Subir el archivo al servidor Express (que lo reenvía a R2)
-  //    Enviamos el archivo como binario puro en el body.
-  //    El Content-Type real del archivo va en el header x-file-content-type.
-  const contentType = file.type || 'application/octet-stream';
+  // 4. Subir el archivo al servidor Express (que lo reenvía a R2)
+  const contentType = fileToUpload.type || 'application/octet-stream';
 
   const uploadRes = await fetch(
-    `/api/upload?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(file.name)}`,
+    `/api/upload?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(fileToUpload.name)}`,
     {
       method: 'POST',
       headers: {
@@ -70,7 +157,7 @@ export async function uploadFile(
         'Content-Type': contentType,
         'x-file-content-type': contentType,
       },
-      body: file,
+      body: fileToUpload,
     }
   );
 
