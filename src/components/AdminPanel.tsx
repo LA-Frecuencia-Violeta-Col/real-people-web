@@ -4,7 +4,7 @@ import {
   Save, X, Image as ImageIcon, Type, DollarSign, List, Clock, Plus, Trash2,
   MessageCircle, ChevronUp, ChevronDown, LogOut, Eye, EyeOff,
   Instagram, Youtube, Music2, Music,
-  LayoutGrid, Monitor, Sparkles, Mic2, Zap, Building2, Plane,
+  LayoutGrid, Monitor, Sparkles, Mic2, Zap, Building2, Plane, Calendar,
   Ticket, ShoppingCart, HelpCircle, Globe, Settings, CheckCircle2,
   AlertCircle, Loader2, Menu, Search,
 } from 'lucide-react';
@@ -23,7 +23,7 @@ const tabGroups = [
   { label: 'General',      tabs: [{ id: 'structure',   label: 'Estructura',   Icon: LayoutGrid  }] },
   { label: 'Portada',      tabs: [{ id: 'hero',        label: 'Hero',         Icon: Monitor     }, { id: 'welcome',    label: 'Bienvenida',   Icon: Sparkles   }] },
   { label: 'Programa',     tabs: [{ id: 'lineup',      label: 'Line Up',      Icon: Mic2        }, { id: 'experience', label: 'Experiencia',  Icon: Zap        }] },
-  { label: 'Alojamiento',  tabs: [{ id: 'lodging',     label: 'Hospedaje',    Icon: Building2   }, { id: 'caliPackage',label: 'Paquete Cali', Icon: Plane      }] },
+  { label: 'Alojamiento',  tabs: [{ id: 'lodging',     label: 'Hospedaje',    Icon: Building2   }, { id: 'caliPackage',label: 'Itinerario',    Icon: Calendar   }] },
   { label: 'Ventas',       tabs: [{ id: 'tickets',     label: 'Boletería',    Icon: Ticket      }, { id: 'buy',        label: 'Comprar',      Icon: ShoppingCart }] },
   { label: 'Información',  tabs: [{ id: 'faqs',        label: 'Preguntas',    Icon: HelpCircle  }, { id: 'footer',     label: 'Footer',       Icon: Globe      }] },
   { label: 'Ajustes',      tabs: [{ id: 'seo',         label: 'SEO / Social', Icon: Search      }, { id: 'settings',   label: 'Configuración', Icon: Settings   }] },
@@ -595,29 +595,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose, o
               </div>
             )}
 
-            {/* ╔══ PAQUETE CALI ════════════════════════════════════════════╗ */}
+            {/* ╔══ ITINERARIO ═════════════════════════════════════════════════╗ */}
             {activeTab === 'caliPackage' && (
               <div className="space-y-5">
-                <RPInput label="Título" value={formData.caliPackage.title} onChange={v => handleChange('caliPackage', 'title', v)} />
-                <RPTextArea label="Descripción" value={formData.caliPackage.desc} onChange={v => handleChange('caliPackage', 'desc', v)} />
-                <RPInput label="Ícono (nombre Lucide React)" value={formData.caliPackage.icon || 'Plane'} onChange={v => handleChange('caliPackage', 'icon', v)} helper="Ejemplos: Plane, Star, Heart, Zap, Package..." />
+                <RPInput label="Título de la Sección" value={formData.caliPackage.title} onChange={v => handleChange('caliPackage', 'title', v)} placeholder="ITINERARIO DÍA A DÍA" />
+                <RPTextArea label="Descripción de la Sección" value={formData.caliPackage.desc} onChange={v => handleChange('caliPackage', 'desc', v)} />
+                <RPInput label="Ícono (Lucide React)" value={formData.caliPackage.icon || 'Calendar'} onChange={v => handleChange('caliPackage', 'icon', v)} helper="Ejemplos: Calendar, Clock, Sparkles, MapPin..." />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <RPInput label="Texto Botón" value={formData.caliPackage.btnText || ''} onChange={v => handleChange('caliPackage', 'btnText', v)} />
-                  <RPInput label="URL Botón" value={formData.caliPackage.btnUrl || ''} onChange={v => handleChange('caliPackage', 'btnUrl', v)} placeholder="#buy o https://..." />
+                  <RPInput label="Texto Botón CTA" value={formData.caliPackage.btnText || ''} onChange={v => handleChange('caliPackage', 'btnText', v)} />
+                  <RPInput label="URL Botón CTA" value={formData.caliPackage.btnUrl || ''} onChange={v => handleChange('caliPackage', 'btnUrl', v)} placeholder="#buy o https://..." />
                 </div>
                 <div className="space-y-3 pt-2 border-t border-white/5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold tracking-widest uppercase text-white/40">Beneficios ({formData.caliPackage.items?.length || 0})</span>
-                    <button onClick={() => addItem('caliPackage', { title: '', desc: '', hidden: false })} className="flex items-center gap-1.5 text-[11px] font-black tracking-wider uppercase transition-opacity hover:opacity-70" style={{ color: accent }}><Plus size={13} /><span>Agregar</span></button>
+                    <span className="text-xs font-bold tracking-widest uppercase text-white/40">Días del Itinerario ({formData.caliPackage.items?.length || 0})</span>
+                    <button onClick={() => addItem('caliPackage', { title: '', desc: '', hidden: false })} className="flex items-center gap-1.5 text-[11px] font-black tracking-wider uppercase transition-opacity hover:opacity-70" style={{ color: accent }}><Plus size={13} /><span>Agregar Día</span></button>
                   </div>
                   {(formData.caliPackage.items || []).map((item, idx) => (
-                    <RPItemCard key={idx} label={item.title || `Beneficio ${idx + 1}`} hidden={!!item.hidden}
+                    <RPItemCard key={idx} label={item.title || `Día ${idx + 1}`} hidden={!!item.hidden}
                       onToggleHide={() => { const items = [...formData.caliPackage.items]; items[idx] = { ...items[idx], hidden: !item.hidden }; handleChange('caliPackage', 'items', items); }}
                       onMoveUp={() => moveItem('caliPackage', idx, 'up')} onMoveDown={() => moveItem('caliPackage', idx, 'down')}
                       onRemove={() => removeItem('caliPackage', idx)} isFirst={idx === 0} isLast={idx === formData.caliPackage.items.length - 1} compact
                     >
-                      <RPInput label="Beneficio" value={item.title} onChange={v => { const items = [...formData.caliPackage.items]; items[idx] = { ...items[idx], title: v }; handleChange('caliPackage', 'items', items); }} />
-                      <RPInput label="Detalle" value={item.desc} onChange={v => { const items = [...formData.caliPackage.items]; items[idx] = { ...items[idx], desc: v }; handleChange('caliPackage', 'items', items); }} />
+                      <RPInput label="Día / Título" value={item.title} onChange={v => { const items = [...formData.caliPackage.items]; items[idx] = { ...items[idx], title: v }; handleChange('caliPackage', 'items', items); }} placeholder="Día 1 | Bienvenidos a Taybeach Hotel" />
+                      <RPTextArea label="Actividades / Programación" value={item.desc} onChange={v => { const items = [...formData.caliPackage.items]; items[idx] = { ...items[idx], desc: v }; handleChange('caliPackage', 'items', items); }} placeholder="• Llegada a Santa Marta..." />
                     </RPItemCard>
                   ))}
                 </div>

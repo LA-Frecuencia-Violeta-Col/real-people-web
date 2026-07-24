@@ -42,12 +42,33 @@ export const INITIAL_DATA: PageData = {
     suites: [],
   },
   caliPackage: {
-    title: '',
-    desc: '',
-    icon: 'Plane',
-    items: [],
-    btnText: '',
-    btnUrl: '',
+    title: 'ITINERARIO DÍA A DÍA',
+    desc: 'Descubre la programación y actividades planificadas para cada uno de los 4 días de la experiencia Taybeach.',
+    icon: 'Calendar',
+    items: [
+      {
+        title: 'Día 1 | BIENVENIDOS A TAYBEACH HOTEL',
+        desc: '• Llegada a Santa Marta y traslado al hotel Taybeach.\n• Tiempo para instalarte y conectar con el entorno.\n• Noche: Cena de bienvenida (8:00 PM) + Ritual de Fuego y Conexión.',
+        hidden: false,
+      },
+      {
+        title: 'Día 2 | WELLNESS & BEACH PARTY',
+        desc: '• Mañana: Desayuno + Clases Wellness (Core, Yoga, Sound Healing, Voleibol).\n• Tarde: Main Stage (Escenario principal frente al mar).',
+        hidden: false,
+      },
+      {
+        title: 'Día 3 | POOL PARTY',
+        desc: '• Mañana: Desayuno.\n• Tarde: Pool Party.\n• Noche: After Party frente al mar.',
+        hidden: false,
+      },
+      {
+        title: 'Día 4 | CHECK-OUT Y REGRESO',
+        desc: '• Mañana: Desayuno.\n• Traslado de regreso al Aeropuerto de Santa Marta.',
+        hidden: false,
+      },
+    ],
+    btnText: 'RESERVAR EXPERIENCIA',
+    btnUrl: '#buy',
   },
   tickets: {
     title: '',
@@ -107,7 +128,7 @@ export const INITIAL_DATA: PageData = {
     experience: 'EXPERIENCIA',
     lineup: 'LINE UP',
     lodging: 'HOSPEDAJE',
-    caliPackage: 'PAQUETE CALI',
+    caliPackage: 'ITINERARIO',
     tickets: 'BOLETERÍA',
     buy: 'COMPRAR',
     faqs: 'PREGUNTAS',
